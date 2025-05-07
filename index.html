@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Realistic Black Hole SIM</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #000; font-family: sans-serif; }
+
+    #ui-panel {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      padding: 20px;
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(14px);
+      border-radius: 16px;
+      color: white;
+      z-index: 2;
+      box-shadow: 0 0 30px rgba(255, 255, 255, 0.05);
+      overflow-y: auto;
+    }
+
+    @media (max-width: 600px) {
+    #ui-panel {
+      top: 10px;
+      left: 10px;
+      padding: 12px;
+      font-size: 0.85em;
+    }
+
+    #zoomIn, #zoomOut {
+      width: 50px;
+      height: 36px;
+      font-size: 1.2em;
+    }
+
+    #joystick {
+      width: 60px;
+      height: 60px;
+    }
+  }
+
+    label, input {
+      display: block;
+      margin-bottom: 10px;
+    }
+
+    label {
+      font-size: 0.9em;
+    }
+
+    input[type="range"] {
+      width: 100%;
+    }
+
+    canvas {
+      display: block;
+    }
+    #mobile-controls {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      z-index: 5;
+    }
+
+    #joystick {
+      width: 80px;
+      height: 80px;
+      border: 2px solid white;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.05);
+      touch-action: none;
+    }
+
+    #zoomIn, #zoomOut {
+      width: 60px;
+      height: 40px;
+      font-size: 1.5em;
+      color: white;
+      background: rgba(255, 255, 255, 0.08);
+      border: none;
+      border-radius: 12px;
+      backdrop-filter: blur(6px);
+    }
+
+  </style>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js",
+        "three/examples/jsm/controls/OrbitControls": "https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/controls/OrbitControls.js",
+        "three/examples/jsm/postprocessing/EffectComposer": "https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/postprocessing/EffectComposer.js",
+        "three/examples/jsm/postprocessing/RenderPass": "https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/postprocessing/RenderPass.js",
+        "three/examples/jsm/postprocessing/UnrealBloomPass": "https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/postprocessing/UnrealBloomPass.js"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="ui-panel">
+    <h2>Black Hole Settings</h2>
+    <label>Bloom Strength <input id="bloomStrength" type="range" min="0" max="50" step="0.1" value="1.5"/></label>
+    <label>Warp Intensity <input id="warpIntensity" type="range" min="0" max="1" step="0.01" value="0.5"/></label>
+    <label>Camera Distance <input id="cameraZoom" type="range" min="5" max="250" step="0.1" value="15"/></label>
+    <!-- <label>Accretion Disk Density <input id="density" type="range" min="1000" max="2000" step="10" value="500"/></label> -->
+    <label>Speed <input id="speedSlider" type="range" min="0.001" max="10" step="0.001" value="0.02"/></label>
+    <label>Use Regular Colors <input id="toggleColors" type="checkbox" checked/></label>
+    <label>Accretion Matter Density <input id="accretionMatterSlider" type="range" min="100" max="5000" step="100" value="500"/></label>
+    <label>Bobbing Intensity <input id="bobbingIntensity" type="range" min="0" max="1" step="0.01" value="1"/></label>
+  </div>
+  <div id="mobile-controls">
+    <div id="joystick"></div>
+    <button id="zoomIn">＋</button>
+    <button id="zoomOut">−</button>
+  </div>
+  
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+    import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer';
+    import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass';
+    import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass';
+    let bobbingIntensity = 1;
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 2, 15);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+
+    const starGeo = new THREE.BufferGeometry();
+    const starCount = 8000;
+    const starVerts = [];
+    for (let i = 0; i < starCount; i++) {
+      const r = 300;
+      const x = (Math.random() - 0.5) * r;
+      const y = (Math.random() - 0.5) * r;
+      const z = (Math.random() - 0.5) * r;
+      starVerts.push(x, y, z);
+    }
+    starGeo.setAttribute('position', new THREE.Float32BufferAttribute(starVerts, 3));
+    const starMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.3 });
+    scene.add(new THREE.Points(starGeo, starMat));
+
+    const coreShader = {
+      uniforms: {
+        time: { value: 0 },
+        intensity: { value: 0.5 }
+      },
+      vertexShader: `
+        varying vec3 vNormal;
+        void main() {
+          vNormal = normalize(normalMatrix * normal);
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform float time;
+        uniform float intensity;
+        varying vec3 vNormal;
+        void main() {
+          float glow = pow(1.0 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 3.0);
+          float flicker = 0.8 + 0.2 * sin(time * 5.0);
+          vec3 color = mix(vec3(0.1, 0.1, 0.1), vec3(0.9, 0.9, 0.9), glow);
+          gl_FragColor = vec4(color * flicker * intensity, 1.0);
+        }
+      `
+    };
+
+    const core = new THREE.Mesh(
+      new THREE.SphereGeometry(2, 64, 64),
+      new THREE.ShaderMaterial({ ...coreShader, side: THREE.FrontSide })
+    );
+    scene.add(core);
+
+    const debrisGroup = new THREE.Group();
+    let globalSpeed = 0.02;
+
+    function createAccretionDisk(density, useRegularColors) {
+      debrisGroup.clear();
+      for (let i = 0; i < density; i++) {
+        const color = useRegularColors ? new THREE.Color(1, 0.8 + Math.random() * 0.2, 0.5) : new THREE.Color(Math.random(), Math.random(), Math.random());
+        const p = new THREE.Mesh(
+          new THREE.SphereGeometry(0.05 + Math.random() * 0.08, 6, 6),
+          new THREE.MeshBasicMaterial({ color })
+        );
+        const r = THREE.MathUtils.randFloat(2.5, 5);
+        const inc = THREE.MathUtils.randFloatSpread(10) * Math.PI / 180;
+        const a = Math.random() * Math.PI * 2;
+        p.userData = { r, a, speed: THREE.MathUtils.randFloat(0.01, 0.03), inc };
+        debrisGroup.add(p);
+      }
+      scene.add(debrisGroup);
+    }
+    createAccretionDisk(500, true);
+
+    const jetMat = new THREE.ShaderMaterial({
+      uniforms: {
+        time: { value: 0 },
+        color: { value: new THREE.Color(0xffffff) }
+      },
+      transparent: true,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+      vertexShader: `
+        uniform float time;
+        varying float vY;
+        void main() {
+          vY = position.y;
+          vec3 pos = position;
+          pos.x += sin(pos.y * 10.0 + time) * 0.1;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform vec3 color;
+        varying float vY;
+        void main() {
+          float fade = 1.0 - abs(vY) / 5.0;
+          gl_FragColor = vec4(color, fade * 0.8);
+        }
+      `
+    });
+
+    const jetGeo = new THREE.CylinderGeometry(0.3, 0.05, 10, 16, 1, true);
+    const topJet = new THREE.Mesh(jetGeo, jetMat);
+    topJet.position.y = 8;
+    topJet.rotation.x = Math.PI;
+    const bottomJet = topJet.clone();
+    bottomJet.position.y = -8;
+    bottomJet.rotation.x = 0;
+    scene.add(topJet, bottomJet);
+
+    const composer = new EffectComposer(renderer);
+    composer.addPass(new RenderPass(scene, camera));
+    const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+    composer.addPass(bloomPass);
+
+    document.getElementById('bloomStrength').addEventListener('input', e => bloomPass.strength = parseFloat(e.target.value));
+    document.getElementById('warpIntensity').addEventListener('input', e => core.material.uniforms.intensity.value = parseFloat(e.target.value));
+    document.getElementById('cameraZoom').addEventListener('input', e => camera.position.z = parseFloat(e.target.value));
+    //document.getElementById('density').addEventListener('input', e => createAccretionDisk(parseInt(e.target.value), document.getElementById('toggleColors').checked));
+    document.getElementById('toggleColors').addEventListener('change', e => createAccretionDisk(parseInt(document.getElementById('density').value), e.target.checked));
+    document.getElementById('speedSlider').addEventListener('input', e => globalSpeed = parseFloat(e.target.value));
+    document.getElementById('accretionMatterSlider').addEventListener('input', e => createAccretionDisk(parseInt(e.target.value), document.getElementById('toggleColors').checked));
+
+    function animate(time) {
+      requestAnimationFrame(animate);
+      const t = time * 0.001;
+      core.material.uniforms.time.value = t;
+      jetMat.uniforms.time.value = t;
+
+      debrisGroup.children.forEach(p => {
+        p.userData.a += globalSpeed * p.userData.speed * 5.0;
+        const a = p.userData.a;
+        const r = p.userData.r;
+        const inc = p.userData.inc;
+        p.position.set(
+          r * Math.cos(a),
+          Math.sin(a * 3) * 0.3 * bobbingIntensity + Math.sin(inc) * r * 0.2 * bobbingIntensity,
+          r * Math.sin(a)
+        );
+      });
+
+      debrisGroup.rotation.y += 0.001;
+      composer.render();
+    }
+    animate();
+
+    window.addEventListener("resize", () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      composer.setSize(window.innerWidth, window.innerHeight);
+    });
+    document.getElementById('bobbingIntensity').addEventListener('input', e => {
+      bobbingIntensity = parseFloat(e.target.value);
+    });
+
+    document.getElementById('zoomIn').addEventListener('click', () => {
+      camera.position.z = Math.max(5, camera.position.z - 1);
+    });
+
+    document.getElementById('zoomOut').addEventListener('click', () => {
+      camera.position.z = Math.min(250, camera.position.z + 1);
+    });
+
+    let joystick = document.getElementById('joystick');
+    let isDragging = false;
+    let startX, startY;
+
+    joystick.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      isDragging = true;
+      const touch = e.touches[0];
+      startX = touch.clientX;
+      startY = touch.clientY;
+    });
+
+    joystick.addEventListener('touchmove', (e) => {
+      if (!isDragging) return;
+      const touch = e.touches[0];
+      const dx = (touch.clientX - startX) * 0.005;
+      const dy = (touch.clientY - startY) * 0.005;
+      camera.rotation.y -= dx;
+      camera.rotation.x -= dy;
+      startX = touch.clientX;
+      startY = touch.clientY;
+    });
+
+    joystick.addEventListener('touchend', () => {
+      isDragging = false;
+    });
+  </script>
+</body>
+</html>
