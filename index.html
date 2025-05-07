@@ -10,7 +10,7 @@
 
     #ui-panel {
       position: absolute;
-      top: 20px;
+      top: 80px;
       left: 20px;
       padding: 20px;
       background: rgba(255, 255, 255, 0.05);
@@ -88,6 +88,26 @@
       border-radius: 12px;
       backdrop-filter: blur(6px);
     }
+    #toggleUIPanel {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      z-index: 1000;
+      padding: 10px 15px;
+      font-size: 24px;
+      background: rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(10px);
+      border: none;
+      border-radius: 8px;
+      color: white;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    #toggleUIPanel:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
 
   </style>
 
@@ -105,7 +125,7 @@
 </head>
 <body>
   <div id="ui-panel">
-    <h2>Black Hole Settings</h2>
+    <h2>[--Settings--]</h2>
     <label>Bloom Strength <input id="bloomStrength" type="range" min="0" max="50" step="0.1" value="1.5"/></label>
     <label>Warp Intensity <input id="warpIntensity" type="range" min="0" max="1" step="0.01" value="0.5"/></label>
     <label>Camera Distance <input id="cameraZoom" type="range" min="5" max="250" step="0.1" value="15"/></label>
@@ -115,6 +135,7 @@
     <label>Accretion Matter Density <input id="accretionMatterSlider" type="range" min="100" max="5000" step="100" value="500"/></label>
     <label>Bobbing Intensity <input id="bobbingIntensity" type="range" min="0" max="1" step="0.01" value="1"/></label>
   </div>
+  <button id="toggleUIPanel">☰</button>
   <div id="mobile-controls">
     <div id="joystick"></div>
     <button id="zoomIn">＋</button>
@@ -286,7 +307,7 @@
     document.getElementById('bobbingIntensity').addEventListener('input', e => {
       bobbingIntensity = parseFloat(e.target.value);
     });
-
+    // Zoom Button Logic
     document.getElementById('zoomIn').addEventListener('click', () => {
       camera.position.z = Math.max(5, camera.position.z - 1);
     });
@@ -295,6 +316,7 @@
       camera.position.z = Math.min(250, camera.position.z + 1);
     });
 
+    // Simple Touch Joystick
     let joystick = document.getElementById('joystick');
     let isDragging = false;
     let startX, startY;
@@ -321,6 +343,17 @@
     joystick.addEventListener('touchend', () => {
       isDragging = false;
     });
+    const toggleBtn = document.getElementById('toggleUIPanel');
+    const uiPanel = document.getElementById('ui-panel');
+
+    toggleBtn.addEventListener('click', () => {
+      if (uiPanel.style.display === 'none') {
+        uiPanel.style.display = 'block';
+      } else {
+        uiPanel.style.display = 'none';
+      }
+    });
+
   </script>
 </body>
 </html>
