@@ -132,8 +132,9 @@
     <!-- <label>Accretion Disk Density <input id="density" type="range" min="1000" max="2000" step="10" value="500"/></label> -->
     <label>Speed <input id="speedSlider" type="range" min="0.001" max="10" step="0.001" value="0.02"/></label>
     <label>Use Regular Colors <input id="toggleColors" type="checkbox" checked/></label>
-    <label>Accretion Matter Density <input id="accretionMatterSlider" type="range" min="100" max="5000" step="100" value="500"/></label>
-    <label>Bobbing Intensity <input id="bobbingIntensity" type="range" min="0" max="1" step="0.01" value="1"/></label>
+    <label>Accretion Matter Density <input id="accretionMatterSlider" type="range" min="50" max="5000" step="100" value="500"/></label>
+    <label>Bobbing Intensity <input id="bobbingIntensity" type="range" min="0" max="50" step="0.01" value="1"/></label>
+    <label>Bobbing Freq <input id="bobbingFreq" type="range" min="0" max="10" step="0.5" value="1"/></label>
   </div>
   <button id="toggleUIPanel">☰</button>
   <div id="mobile-controls">
@@ -149,6 +150,7 @@
     import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass';
     import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass';
     let bobbingIntensity = 1;
+    let bobbingFreq = 2;
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 1000);
     camera.position.set(0, 2, 15);
@@ -288,7 +290,7 @@
         const inc = p.userData.inc;
         p.position.set(
           r * Math.cos(a),
-          Math.sin(a * 3) * 0.3 * bobbingIntensity + Math.sin(inc) * r * 0.2 * bobbingIntensity,
+          Math.sin(a * bobbingFreq) * bobbingFreq * bobbingIntensity + Math.sin(inc) * r * 0.2 * bobbingIntensity,
           r * Math.sin(a)
         );
       });
@@ -306,6 +308,9 @@
     });
     document.getElementById('bobbingIntensity').addEventListener('input', e => {
       bobbingIntensity = parseFloat(e.target.value);
+    });
+    document.getElementById('bobbingFreq').addEventListener('input', e => {
+      bobbingFreq = parseFloat(e.target.value);
     });
     // Zoom Button Logic
     document.getElementById('zoomIn').addEventListener('click', () => {
